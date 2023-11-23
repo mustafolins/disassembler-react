@@ -1,6 +1,7 @@
-import { Button, Typography } from '@mui/material'
-import { styled } from '@mui/material/styles';
 import React, { Component } from 'react'
+import { Accordion, AccordionSummary, AccordionDetails, Button, Typography } from '@mui/material'
+import { styled } from '@mui/material/styles';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
@@ -21,7 +22,7 @@ export default class DisassembledCode extends Component {
         // set up state variables
         this.state = {
             api: 'https://disassemblerapi.azurewebsites.net/',
-            opCodes: []
+            sections: []
         }
 
         this.fileUpload = this.fileUpload.bind(this)
@@ -42,11 +43,11 @@ export default class DisassembledCode extends Component {
                     redirect: 'follow'
                 };
 
-                fetch(`${this.state.api}api/disassembler/assembly`, requestOptions)
+                fetch(`${this.state.api}api/disassembler/peinfo`, requestOptions)
                     .then(response => response.json())
                     .then(result => {
                         console.log(result)
-                        this.setState({opCodes: result})
+                        this.setState({ sections: result.sections })
                     })
                     .catch(error => console.log('error', error));
             }
@@ -72,10 +73,21 @@ export default class DisassembledCode extends Component {
                     <VisuallyHiddenInput type='file' onChange={this.fileUpload} />
                 </Button>
 
-                {this.state.opCodes.map((opCode, index) => 
-                    <Typography key={index}>
-                        {opCode}
-                    </Typography>
+                {this.state.sections.map((sectionInfo, i) =>
+                    <Accordion key={`accordian-${i}`}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="panel1a-content" id="panel1a-header">
+                            <Typography sx={{ width: '33%', flexShrink: 0 }}>{sectionInfo.name}</Typography>
+                            <Typography sx={{ width: '33%', flexShrink: 0, color: 'text.secondary' }}>Flags: {sectionInfo.sectionCharacteristics}</Typography>
+                            <Typography sx={{ width: '33%', flexShrink: 0, color: 'text.third' }}>Length: {sectionInfo.length}</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                            {sectionInfo.instructions.map((opCode, j) =>
+                                <Typography key={`acc-typ-${j}`}>
+                                    {`${j} : ${opCode}`}
+                                </Typography>
+                            )}
+                        </AccordionDetails>
+                    </Accordion>
                 )}
             </div>
         )
