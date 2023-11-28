@@ -1,5 +1,5 @@
 import './App.css';
-import DisassembledCode from './Components/DisassembledCode';
+import Disassembler from './Components/Disassembler';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
@@ -15,7 +15,7 @@ function App() {
       <header className="App-header">
         <ThemeProvider theme={darkTheme}>
           <CssBaseline />
-          <DisassembledCode />
+          <Disassembler />
         </ThemeProvider>
       </header>
     </div>

@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
-import { Accordion, AccordionSummary, AccordionDetails, Button, Typography } from '@mui/material'
+import { Button, CircularProgress } from '@mui/material'
 import { styled } from '@mui/material/styles';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import SectionDetails from './SectionDetails';
 
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
@@ -15,14 +15,15 @@ const VisuallyHiddenInput = styled('input')({
     width: 1,
 });
 
-export default class DisassembledCode extends Component {
+export default class Disassembler extends Component {
     constructor(props) {
         super(props)
 
         // set up state variables
         this.state = {
             api: 'https://disassemblerapi.azurewebsites.net/',
-            sections: []
+            sections: [],
+            isLoading: false
         }
 
         this.fileUpload = this.fileUpload.bind(this)
@@ -30,26 +31,39 @@ export default class DisassembledCode extends Component {
 
     fileUpload(e) {
         console.log(e.target.files[0])
+        this.setState(
+            {
+                isLoading: true
+            })
         this.getBase64(e.target.files[0]).then(
             data => {
                 let base64string = data.substring(data.indexOf(',') + 1)
                 console.log(base64string);
                 var requestOptions = {
-                    method: 'POST',
-                    body: JSON.stringify(base64string),
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    redirect: 'follow'
+                    method: 'POST',
+                    body: JSON.stringify(base64string)
                 };
 
                 fetch(`${this.state.api}api/disassembler/peinfo`, requestOptions)
                     .then(response => response.json())
                     .then(result => {
                         console.log(result)
-                        this.setState({ sections: result.sections })
+                        this.setState(
+                            {
+                                sections: result.sections,
+                                isLoading: false
+                            })
                     })
-                    .catch(error => console.log('error', error));
+                    .catch(error => {
+                        console.log('error', error)
+                        this.setState(
+                            {
+                                isLoading: false
+                            })
+                    });
             }
         )
     }
@@ -68,26 +82,19 @@ export default class DisassembledCode extends Component {
     render() {
         return (
             <div>
-                <Button component='label' variant='outlined'>
-                    Upload binary!
-                    <VisuallyHiddenInput type='file' onChange={this.fileUpload} />
-                </Button>
+                {!this.state.isLoading ?
+                    <Button component='label' variant='outlined'>
+                        Upload binary!
+                        <VisuallyHiddenInput type='file' onChange={this.fileUpload} />
+                    </Button> : null
+                }
+
+                {this.state.isLoading ?
+                    <CircularProgress /> : null
+                }
 
                 {this.state.sections.map((sectionInfo, i) =>
-                    <Accordion key={`accordian-${i}`}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="panel1a-content" id="panel1a-header">
-                            <Typography sx={{ width: '33%', flexShrink: 0 }}>{sectionInfo.name}</Typography>
-                            <Typography sx={{ width: '33%', flexShrink: 0, color: 'text.secondary' }}>Flags: {sectionInfo.sectionCharacteristics}</Typography>
-                            <Typography sx={{ width: '33%', flexShrink: 0, color: 'text.third' }}>Length: {sectionInfo.length}</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            {sectionInfo.instructions.map((opCode, j) =>
-                                <Typography key={`acc-typ-${j}`}>
-                                    {`${j} : ${opCode}`}
-                                </Typography>
-                            )}
-                        </AccordionDetails>
-                    </Accordion>
+                    <SectionDetails key={`accordian-${i}`} sectionInfo={sectionInfo} sectionIndex={i} />
                 )}
             </div>
         )
