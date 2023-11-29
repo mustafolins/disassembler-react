@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Button, CircularProgress } from '@mui/material'
+import { Alert, Box, Button, CircularProgress, Snackbar } from '@mui/material'
 import { styled } from '@mui/material/styles';
 import SectionDetails from './SectionDetails';
 
@@ -23,51 +23,63 @@ export default class Disassembler extends Component {
         this.state = {
             api: 'https://disassemblerapi.azurewebsites.net/',
             sections: [],
-            isLoading: false
+            isLoading: false,
+            fileName: null
         }
 
         this.fileUpload = this.fileUpload.bind(this)
+        this.handleCloseNotification = this.handleCloseNotification.bind(this)
     }
 
+    /**
+     * Uploads a file to the DisassemblerAPI.
+     * @param {*} e The event that contains the selected file if any.
+     */
     fileUpload(e) {
         console.log(e.target.files[0])
-        this.setState(
-            {
-                isLoading: true
-            })
+        this.setLoadingState(true);
         this.getBase64(e.target.files[0]).then(
             data => {
+                // get a substring since getBase64 returns a data url
                 let base64string = data.substring(data.indexOf(',') + 1)
                 console.log(base64string);
-                var requestOptions = {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    method: 'POST',
-                    body: JSON.stringify(base64string)
-                };
 
-                fetch(`${this.state.api}api/disassembler/peinfo`, requestOptions)
+                // fetch the PE info from the API
+                fetch(`${this.state.api}api/disassembler/peinfo`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        method: 'POST',
+                        body: JSON.stringify(base64string)
+                    })
                     .then(response => response.json())
                     .then(result => {
                         console.log(result)
+                        // set api response to sections state
                         this.setState(
                             {
                                 sections: result.sections,
-                                isLoading: false
+                                isLoading: false,
+                                fileName: e.target.files[0].name
                             })
                     })
                     .catch(error => {
-                        console.log('error', error)
-                        this.setState(
-                            {
-                                isLoading: false
-                            })
+                        console.log('API error:', error)
+                        this.setLoadingState();
                     });
             }
-        )
+        ).catch(error => {
+            console.log('Error getting base64 string of executable:', error)
+            this.setLoadingState();
+        })
     }
 
+    /**
+     * Gets a base64 data URL for the given file.
+     * @param {*} file The file to get a base64 data URL for.
+     * @returns A Promise to return the data URL for the given file.
+     */
     getBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -79,19 +91,43 @@ export default class Disassembler extends Component {
         });
     }
 
+    /**
+     * Sets the loading state of this component indicating whether or not to display progress wheel.
+     * @param {*} loading Value indicationg whether or not the API is currently disassebmling the given file.
+     */
+    setLoadingState(loading = false) {
+        this.setState(
+            {
+                isLoading: loading
+            });
+    }
+
+    /**
+     * Handles the onClose event for the SnackBar.
+     */
+    handleCloseNotification() {
+        this.setState({
+            fileName: null
+        })
+    }
+
     render() {
         return (
             <div>
-                {!this.state.isLoading ?
-                    <Button component='label' variant='outlined'>
+                <Snackbar open={this.state.fileName !== null} autoHideDuration={3000} onClose={this.handleCloseNotification} anchorOrigin={{horizontal: 'center', vertical: 'top'}}>
+                    <Alert severity='success'>Disassembled file {this.state.fileName}</Alert>
+                </Snackbar>
+
+                <Box sx={{ position: 'relative' }}>
+                    <Button component='label' variant='outlined' disabled={this.state.isLoading}>
                         Upload binary!
                         <VisuallyHiddenInput type='file' onChange={this.fileUpload} />
-                    </Button> : null
-                }
+                    </Button>
 
-                {this.state.isLoading ?
-                    <CircularProgress /> : null
-                }
+                    {this.state.isLoading ?
+                        <CircularProgress size={24} sx={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-12px', marginLeft: '-12px' }} /> : null
+                    }
+                </Box>
 
                 {this.state.sections.map((sectionInfo, i) =>
                     <SectionDetails key={`accordian-${i}`} sectionInfo={sectionInfo} sectionIndex={i} />
